@@ -47,29 +47,35 @@ int main()
   return -1;
   }
 
- printf("Total inst;inst/s;CPUpapi_fl;REALpapi_fl;CPUget_s;CPUget_ns;CPUwait_s"
+ printf("Total inst;inst/s;CPUget_s;CPUget_ns;CPUwait_s"
         ";CPUwait_mcs;REALget_s;REALget_ns\n");
 // Параметры цикла (счётчик) будут, скорее всего, изменяемыми и будут
 // зависеть от оценок, посчитанных заранее
- PAPI_library_init(PAPI_VER_CURRENT);
-
- int EventSet=0;
- PAPI_create_eventset(&EventSet);
- int EventCodes[6]={
-                     PAPI_LD_INS,
-                     PAPI_SR_INS,
-                     PAPI_BR_INS,
-                     PAPI_RES_STL,
-                     PAPI_TOT_INS,
-                     PAPI_TOT_CYC,
+ int err;
+ err=PAPI_library_init(PAPI_VER_CURRENT);
+ if (err!=PAPI_VER_CURRENT)
+  {
+  printf("PAPI library init error!\n");
+  exit(1);
+  }
+ fprintf(stderr,"PAPI_library_init(): %s\n",PAPI_strerror(err));
+ int EventSet=PAPI_NULL;
+ err=PAPI_create_eventset(&EventSet);
+ fprintf(stderr,"PAPI_create_eventset(): %s\n",PAPI_strerror(err));
+ int EventCodes[2]={
+  PAPI_TOT_INS,
+  PAPI_TOT_CYC
 };
- PAPI_add_events(EventSet,EventCodes,6);
-// PAPI_start(EventSet);
+ err=PAPI_add_events(EventSet,EventCodes,2);
+ fprintf(stderr,"PAPI_add_events(): %s\n",PAPI_strerror(err));
+// err=PAPI_start(EventSet);
+// fprintf(stderr,"PAPI_start(): %s\n",PAPI_strerror(err));
 // PAPI_ipc(&rtime,&ptime,&ins,&ipc);
 // clock_gettime(CLOCK_REALTIME,&comt1);
 // PAPI_ipc(&rtime,&ptime,&ins,&ipc);
  long_long values[6];
-// PAPI_stop(EventSet,values);
+// err=PAPI_stop(EventSet,values);
+// fprintf(stderr,"PAPI_stop(): %s\n",PAPI_strerror(err));
  for(unsigned k=0;k<cnt;++k)
   {
 //  pid=fork();
@@ -77,13 +83,17 @@ int main()
   if(pid==0)
    {
    clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t1);
-   PAPI_ipc(&rtime,&ptime,&ins,&ipc);
-   PAPI_start(EventSet);
+//   err=PAPI_ipc(&rtime,&ptime,&ins,&ipc);
+//   fprintf(stderr,"PAPI_ipc(): %s\n",PAPI_strerror(err));
+   err=PAPI_start(EventSet);
+   fprintf(stderr,"PAPI_start(): %s\n",PAPI_strerror(err));
    //... какая-нибудь нагрузка
    for(unsigned i=0;i<=lcnt;)
     i++;
-   PAPI_stop(EventSet,values);
-   PAPI_ipc(&rtime,&ptime,&ins,&ipc);
+   err=PAPI_stop(EventSet,values);
+   fprintf(stderr,"PAPI_stop(): %s\n",PAPI_strerror(err));
+//   err=PAPI_ipc(&rtime,&ptime,&ins,&ipc);
+//   fprintf(stderr,"PAPI_ipc(): %s\n",PAPI_strerror(err));
    clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t2);
    sdel=t2.tv_sec-t1.tv_sec;
    if(t2.tv_nsec-t1.tv_nsec<0)
@@ -91,7 +101,7 @@ int main()
    else
     nsdel=t2.tv_nsec-t1.tv_nsec;
 
-   printf("%lli;%lli;%f;%f;%li;%li;",values[4],values[5],ptime,rtime,sdel,nsdel);
+   printf("%lli;%lli;%f;%f;%li;%li;",values[0],values[1],/*ptime,rtime,*/sdel,nsdel);
 //   exit(1);
    }
 
