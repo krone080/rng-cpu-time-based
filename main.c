@@ -23,6 +23,9 @@ double get_rand_devi_sum(const double meanX, const unsigned lcnt, const unsigned
 
 int distribution_init(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n);
+
+int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
+                      const unsigned lcnt, const unsigned n);
 /*
  *
  *
@@ -43,7 +46,7 @@ int main()
  struct timespec comt1,comt2;
  int fd;
  char fname[20];
- unsigned cnt,n,lcnt;
+ unsigned cnt,n,lcnt,cnt2;
 //PAPI
  const int num_hwcntrs=PAPI_num_counters();
  int events[11];
@@ -52,12 +55,14 @@ int main()
 
  printf("The number of available hardware counters: %i\nInput file name: ",num_hwcntrs);
  scanf("%s",fname);
- printf("Sample length: ");
+ printf("Sample length for init: ");
  scanf("%i",&cnt);
  printf("Sum length: ");
  scanf("%i",&n);
  printf("Load counter: ");
  scanf("%i",&lcnt);
+ printf("Gen sample length: ");
+ scanf("%i",&cnt2);
  close(1);
  fd=creat(fname,0664);
  if(fd<0)
@@ -66,23 +71,18 @@ int main()
   return -1;
   }
 
- printf("CPUget\n");
 // Параметры цикла (счётчик) будут, скорее всего, изменяемыми и будут
 // зависеть от оценок, посчитанных заранее
 
  double meanX,meanS,varS;
- distribution_init(&meanX,&meanS,&varS,cnt,lcnt,n);
+ distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n);
 
- fprintf(stderr,"\nEX=%.9f, ES=%e, DS=%e\n\nrand:\n"
-                "",meanX,meanS,varS);
- for(unsigned i=0;i<n;++i)
-   fprintf(stderr,"%.9f\n",get_rand(lcnt));
- fprintf(stderr,"\ndevi:\n");
- for(unsigned i=0;i<10;++i)
-  fprintf(stderr,"%.9f\n",get_rand_devi(meanX,lcnt));
- fprintf(stderr,"\ndevi_sum:\n");
- for(unsigned i=0;i<10;++i)
-   fprintf(stderr,"%.9f\n",get_rand_devi_sum(meanX,lcnt,n));
+ printf("\nES=%e, DS=%e",meanS,varS);
+// for(unsigned i=0;i<cnt2;++i)
+//  {
+//  printf("%.9f ",get_rand_devi_sum(meanX,lcnt,n));
+//  fflush(stdout);
+//  }
 //4. преобразование
 
 //5. предоставление числа/последовательности на выход
@@ -187,3 +187,53 @@ int distribution_init(double *meanX, double *meanS, double *varS, const unsigned
  *meanS=_meanS;
  *varS=_varS;
  }
+
+int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
+                      const unsigned lcnt, const unsigned n)
+ {
+ double sample[cnt],_meanX=0.,_meanS=0.,_varS;
+
+ for(unsigned k=0;k<cnt;++k)
+  {
+  sample[k]=get_rand(lcnt);
+  _meanX+=sample[k];
+  }
+ _meanX/=cnt;
+ for(unsigned k=0;k<cnt;++k)
+  sample[k]-=_meanX;
+
+ const unsigned m=cnt/n;
+ double S[m];
+ for(unsigned i=0;i<m;++i)
+  S[i]=0.;
+
+//вычисление мат. ожидания
+ for(unsigned i=0;i<m;++i)
+  {
+  for(unsigned j=0;j<n;++j)
+   S[i]+=sample[i*n+j];
+  _meanS+=S[i];
+  }
+ _meanS/=m;
+
+ //Используем уже выработанные данные
+ for(unsigned i=0;i<m;++i)
+  {
+  printf("%0.9f ",S[i]);
+  fflush(stdout);
+  }
+
+//вычисление дисперсии
+ for(unsigned i=0;i<m;++i)
+  {
+  S[i]=pow(S[i]-_meanS,2.);
+  _varS+=S[i];
+  }
+ _varS/=m;
+
+ *meanX=_meanX;
+ *meanS=_meanS;
+ *varS=_varS;
+
+ }
+rusage
