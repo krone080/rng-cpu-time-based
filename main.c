@@ -24,7 +24,7 @@ double get_rand_devi_sum(const double meanX, const unsigned lcnt, const unsigned
 int distribution_init(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n);
 
-int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
+int distribution_init_test(long long *meanX, long long *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n);
 /*
  *
@@ -74,10 +74,11 @@ int main()
 // Параметры цикла (счётчик) будут, скорее всего, изменяемыми и будут
 // зависеть от оценок, посчитанных заранее
 
- double meanX,meanS,varS;
+ double varS;
+ long long meanX,meanS;
  distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n);
 
- printf("\nES=%e, DS=%e",meanS,varS);
+ printf("\nES=%lli, DS=%e",meanS,varS);
 // for(unsigned i=0;i<cnt2;++i)
 //  {
 //  printf("%.9f ",get_rand_devi_sum(meanX,lcnt,n));
@@ -188,47 +189,40 @@ int distribution_init(double *meanX, double *meanS, double *varS, const unsigned
  *varS=_varS;
  }
 
-int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
+int distribution_init_test(long long *meanX, long long *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n)
  {
- double sample[cnt],_meanX=0.,_meanS=0.,_varS;
-
- for(unsigned k=0;k<cnt;++k)
-  {
-  sample[k]=get_rand(lcnt);
-  _meanX+=sample[k];
-  }
- _meanX/=cnt;
- for(unsigned k=0;k<cnt;++k)
-  sample[k]-=_meanX;
-
+ long long _meanX=0,_meanS=0,tmp=0;
+ double _varS;
  const unsigned m=cnt/n;
- double S[m];
+ long S[m];
  for(unsigned i=0;i<m;++i)
-  S[i]=0.;
-
-//вычисление мат. ожидания
+  S[i]=0;
  for(unsigned i=0;i<m;++i)
   {
   for(unsigned j=0;j<n;++j)
-   S[i]+=sample[i*n+j];
-  _meanS+=S[i];
+   S[i]+=get_rand(lcnt)*1000000000;
+  tmp+=S[i];
+  fprintf(stderr,"\r%i/%i",i,m);
   }
- _meanS/=m;
+ _meanX=(long long)(tmp/cnt);
+
+ for(unsigned k=0;k<m;++k)
+  S[k]-=_meanX*n;
+
+ //Небольшая погрешность(хотя кто знает) в обмен на производительность
+ _meanS=((long long)(tmp/m))-_meanX*n;
 
  //Используем уже выработанные данные
  for(unsigned i=0;i<m;++i)
   {
-  printf("%0.9f ",S[i]);
+  printf("%li ",S[i]);
   fflush(stdout);
   }
 
 //вычисление дисперсии
  for(unsigned i=0;i<m;++i)
-  {
-  S[i]=pow(S[i]-_meanS,2.);
-  _varS+=S[i];
-  }
+  _varS+=pow(S[i]-_meanS,2);
  _varS/=m;
 
  *meanX=_meanX;
@@ -236,4 +230,3 @@ int distribution_init_test(double *meanX, double *meanS, double *varS, const uns
  *varS=_varS;
 
  }
-rusage
