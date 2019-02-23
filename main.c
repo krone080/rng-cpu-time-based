@@ -201,10 +201,17 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
  for(unsigned i=0;i<m;++i)
   {
   for(unsigned j=0;j<n;++j)
-   S[i]+=get_rand(lcnt)*1000000000;
-  tmp+=S[i];
+//   S[i]+=get_rand(lcnt)*1000000000;
+   {
+   S[0]=get_rand(lcnt)*1000000000;
+   printf("%li\n",S[0]);
+   fflush(stdout);
+   }
+//  tmp+=S[i];
   fprintf(stderr,"\r%i/%i",i,m);
   }
+//ЗАВЕРШАЕМ ПРОГРАММУ
+ exit(0);
  _meanX=(long long)(tmp/cnt);
 
  for(unsigned k=0;k<m;++k)
