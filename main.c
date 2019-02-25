@@ -78,7 +78,7 @@ int main()
  long long meanX,meanS;
  distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n);
 
- printf("\nES=%lli, DS=%e",meanS,varS);
+// printf("\nES=%lli, DS=%e",meanS,varS);
 // for(unsigned i=0;i<cnt2;++i)
 //  {
 //  printf("%.9f ",get_rand_devi_sum(meanX,lcnt,n));
@@ -195,16 +195,25 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
  long long _meanX=0,_meanS=0,tmp=0;
  double _varS;
  const unsigned m=cnt/n;
- long S[m];
+ long S[m],rnd;
  for(unsigned i=0;i<m;++i)
   S[i]=0;
  for(unsigned i=0;i<m;++i)
   {
   for(unsigned j=0;j<n;++j)
-   S[i]+=get_rand(lcnt)*1000000000;
+   {
+   kek:
+   rnd=get_rand(lcnt)*1000000000;
+   //МОЙ ФИЛЬТР
+   //Квантиль 0.999 - 13950; 0.99 - 1735
+   if(rnd==0||rnd>13950)
+    goto kek;
+   S[i]+=rnd;
+   }
   tmp+=S[i];
   fprintf(stderr,"\r%i/%i",i,m);
   }
+
  _meanX=(long long)(tmp/cnt);
 
  for(unsigned k=0;k<m;++k)
@@ -216,7 +225,7 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
  //Используем уже выработанные данные
  for(unsigned i=0;i<m;++i)
   {
-  printf("%li ",S[i]);
+  printf("%li\n",S[i]);
   fflush(stdout);
   }
 
