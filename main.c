@@ -11,6 +11,7 @@
 #include <papi.h>
 #include <unistd.h>
 #include <math.h>
+#include <string.h>
 
 //Получение параметров нормального распределения в текущий момент
 //времени
@@ -35,7 +36,7 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
  *
  *
  */
-int main()
+int main(int argc,char* argv[])
  {
 //1. трансформация процесса в демона
 
@@ -53,18 +54,34 @@ int main()
  float rtime,ptime,ipc;
  long_long ins;
 
- printf("The number of available hardware counters: %i\nInput file name: ",num_hwcntrs);
- scanf("%s",fname);
- printf("Sample length for init: ");
- scanf("%i",&cnt);
- printf("Sum length: ");
- scanf("%i",&n);
- printf("Load counter: ");
- scanf("%i",&lcnt);
- printf("Gen sample length: ");
- scanf("%i",&cnt2);
+ if(argc==6)
+  {
+  strcpy(fname,argv[1]);
+  cnt=atoi(argv[2]);
+  n=atoi(argv[3]);
+  lcnt=atoi(argv[4]);
+  cnt2=atoi(argv[5]);
+  }
+ else
+  {
+  printf("The number of available hardware counters: %i\nInput file name: ",num_hwcntrs);
+  scanf("%s",fname);
+  printf("Sample length for init: ");
+  scanf("%i",&cnt);
+  printf("Sum length: ");
+  scanf("%i",&n);
+  printf("Load counter: ");
+  scanf("%i",&lcnt);
+  printf("Gen sample length: ");
+  scanf("%i",&cnt2);
+  }
  close(1);
  fd=creat(fname,0664);
+ printf("1. %s\n",fname);
+ printf("2. %i\n",cnt);
+ printf("3. %i\n",n);
+ printf("4. %i\n",lcnt);
+ printf("5. %i\n",cnt2);
  if(fd<0)
   {
   perror("creat()");
