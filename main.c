@@ -126,35 +126,35 @@ double get_rand(const unsigned lcnt)
  long sdel,nsdel;
  char msg[12];
 
- pipe(pfd);
+// pipe(pfd);
  pid=fork();
  if(pid==0)
   {
-  close(3);
+//  close(3);
 
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t1);
+//  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t1);
   //... какая-нибудь нагрузка
   for(unsigned i=0;i<=lcnt;)
    i++;
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t2);
-  sdel=t2.tv_sec-t1.tv_sec;
-  if(t2.tv_nsec-t1.tv_nsec<0)
-   nsdel=1000000000+t2.tv_nsec-t1.tv_nsec;
-  else
-   nsdel=t2.tv_nsec-t1.tv_nsec;
+//  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t2);
+//  sdel=t2.tv_sec-t1.tv_sec;
+//  if(t2.tv_nsec-t1.tv_nsec<0)
+//   nsdel=1000000000+t2.tv_nsec-t1.tv_nsec;
+//  else
+//   nsdel=t2.tv_nsec-t1.tv_nsec;
 
-  close(1);
-  dup(4);
-  printf("%1li.%.9li",sdel,nsdel);
+//  close(1);
+//  dup(4);
+//  printf("%1li.%.9li",sdel,nsdel);
   exit(1);
   }
- close(4);
+// close(4);
 
  wait3(stat,0,&info);
- read(3,msg,11);
- msg[11]=0;
- close(3);
- return atof(msg);
+// read(3,msg,11);
+// msg[11]=0;
+// close(3);
+ return info.ru_stime.tv_sec+info.ru_utime.tv_sec+(info.ru_stime.tv_usec+info.ru_utime.tv_usec)*0.000001;
  }
 
 double get_rand_devi_sum(const double meanX, const unsigned lcnt, const unsigned n)
@@ -220,7 +220,7 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
   for(unsigned j=0;j<n;++j)
 //   S[i]+=get_rand(lcnt)*1000000000;
    {
-   S[0]=get_rand(lcnt)*1000000000;
+   S[0]=get_rand(lcnt)*1000000;
    printf("%li\n",S[0]);
    fflush(stdout);
    }
