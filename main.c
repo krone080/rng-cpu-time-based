@@ -24,8 +24,12 @@ double get_rand_devi_sum(const double meanX, const unsigned lcnt, const unsigned
 int distribution_init(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n);
 
-int distribution_init_test(long long *meanX, long long *meanS, double *varS, const unsigned cnt,
+int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n);
+
+double normal_cdf(double x, double E, double D)
+ {return 0.5*(1.+erf((x-E)/sqrt(2.*D)));}
+
 /*
  *
  *
@@ -35,7 +39,7 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
  *
  *
  */
-int main()
+int main(int argc,char* argv[])
  {
 //1. трансформация процесса в демона
 
@@ -47,22 +51,30 @@ int main()
  int fd;
  char fname[20];
  unsigned cnt,n,lcnt,cnt2;
-//PAPI
- const int num_hwcntrs=PAPI_num_counters();
- int events[11];
  float rtime,ptime,ipc;
  long_long ins;
 
- printf("The number of available hardware counters: %i\nInput file name: ",num_hwcntrs);
- scanf("%s",fname);
- printf("Sample length for init: ");
- scanf("%i",&cnt);
- printf("Sum length: ");
- scanf("%i",&n);
- printf("Load counter: ");
- scanf("%i",&lcnt);
- printf("Gen sample length: ");
- scanf("%i",&cnt2);
+ if(argc==6)
+  {
+  strcpy(fname,argv[1]);
+  cnt=atoi(argv[2]);
+  n=atoi(argv[3]);
+  lcnt=atoi(argv[4]);
+  cnt2=atoi(argv[5]);
+  }
+ else
+  {
+  printf("Input file name: ");
+  scanf("%s",fname);
+  printf("Sample length for init: ");
+  scanf("%i",&cnt);
+  printf("Sum length: ");
+  scanf("%i",&n);
+  printf("Load counter: ");
+  scanf("%i",&lcnt);
+  printf("Gen sample length: ");
+  scanf("%i",&cnt2);
+  }
  close(1);
  fd=creat(fname,0664);
  if(fd<0)
@@ -75,7 +87,7 @@ int main()
 // зависеть от оценок, посчитанных заранее
 
  double varS;
- long long meanX,meanS;
+ double meanX,meanS;
  distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n);
 
 // printf("\nES=%lli, DS=%e",meanS,varS);
@@ -189,13 +201,13 @@ int distribution_init(double *meanX, double *meanS, double *varS, const unsigned
  *varS=_varS;
  }
 
-int distribution_init_test(long long *meanX, long long *meanS, double *varS, const unsigned cnt,
+int distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n)
  {
- long long _meanX=0,_meanS=0,tmp=0;
+ double _meanX=0,_meanS=0,tmp=0;
  double _varS;
  const unsigned m=cnt/n;
- long S[m],rnd;
+ double S[m],X[cnt],rnd;
  for(unsigned i=0;i<m;++i)
   S[i]=0;
  for(unsigned i=0;i<m;++i)
@@ -203,36 +215,46 @@ int distribution_init_test(long long *meanX, long long *meanS, double *varS, con
   for(unsigned j=0;j<n;++j)
    {
 //   kek:
-   rnd=get_rand(lcnt)*1000000;
+   rnd=get_rand(lcnt);
    //МОЙ ФИЛЬТР
    //Квантиль 0.999 - 13950; 0.99 - 1735
 //   if(rnd==0||rnd>13950)
 //    goto kek;
+   X[i*n+j]=rnd;
    S[i]+=rnd;
    }
   tmp+=S[i];
   fprintf(stderr,"\r%i/%i",i,m);
   }
 
- _meanX=(long long)(tmp/cnt);
+ _meanX=tmp/cnt;
 
  for(unsigned k=0;k<m;++k)
   S[k]-=_meanX*n;
 
  //Небольшая погрешность(хотя кто знает) в обмен на производительность
- _meanS=((long long)(tmp/m))-_meanX*n;
-
- //Используем уже выработанные данные
- for(unsigned i=0;i<m;++i)
-  {
-  printf("%li\n",S[i]);
-  fflush(stdout);
-  }
+ _meanS=tmp/m-_meanX*n;
 
 //вычисление дисперсии
  for(unsigned i=0;i<m;++i)
   _varS+=pow(S[i]-_meanS,2);
  _varS/=m;
+
+//Вывод сумм S
+ for(unsigned i=0;i<m;++i)
+  {
+  printf("%f\n",S[i]); //normal_cdf(S[i],_meanS,_varS) - как аргумент
+  fflush(stdout);
+  }
+
+//Вывод значений X
+ close(1);
+ creat("X",0664);
+ for(unsigned i=0;i<cnt;++i)
+  {
+  printf("%f\n",X[i]);
+  fflush(stdout);
+  }
 
  *meanX=_meanX;
  *meanS=_meanS;
