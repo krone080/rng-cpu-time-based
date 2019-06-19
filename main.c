@@ -30,6 +30,7 @@ void distribution_init_test(double *meanX, double *meanS, double *varS, const un
 double normal_cdf(double x, double E, double D)
  {return 0.5*(1.+erf((x-E)/sqrt(2.*D)));}
 
+pid_t pfd_to[2],pfd_from[2];
 /*
  *
  *
@@ -46,10 +47,49 @@ int main(int argc,char* argv[])
 //2. fork, создание особых потомков для генерации различных
 //   независимых выборок
 
-// pid_t pid;
-// struct timespec comt1,comt2;
+ pipe(pfd_to);
+ pipe(pfd_from);
+
+//Процесс-посредник
+ if(fork()==0)
+  {
+  close(pfd_to[1]);
+  close(pfd_from[0]);
+
+  unsigned lcnt;
+  while((read(pfd_to[0],&lcnt,sizeof(lcnt))>0)&&!(lcnt==0))
+   {
+   void* stat=NULL;
+   struct rusage info;
+   char s[150];
+   memset(s,0,150);
+
+//Генерируемый процесс для выработки
+   if(fork()==0)
+    {
+    // sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' | tee -a tmp\n"
+    //           "ps --no-headers -o psr -p %i | tee -a tmp",getpid());
+    sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' >> tmp\n"
+                "ps --no-headers -o psr -p %i >> tmp",getpid());
+    //... какая-нибудь нагрузка
+    for(unsigned i=0;i<lcnt;++i)
+     {
+     //  printf("%i\n",i);
+     system(s);
+     }
+    exit(1);
+    }
+   wait3(stat,0,&info);
+   write(pfd_from[1],&info,sizeof(info));
+   }
+  exit(1);
+  }
+
+ close(pfd_to[0]);
+ close(pfd_from[1]);
+
  char fname[20];
- unsigned cnt,n,lcnt,cnt2;
+ unsigned cnt,n,cnt2,lcnt;
  FILE *ffile;
 // float rtime,ptime,ipc;
 // long long ins;
@@ -73,6 +113,7 @@ int main(int argc,char* argv[])
   printf("Load counter: ");
   scanf("%i",&lcnt);
   printf("Gen sample length: ");
+
   scanf("%i",&cnt2);
   }
 // fd=creat(fname,0664);
@@ -115,49 +156,11 @@ int main(int argc,char* argv[])
  */
 double get_rand(const unsigned lcnt, unsigned *freq)
  {
- void* stat=NULL;
  struct rusage info;
-// struct timespec t1,t2;
- int pid; // pfd[2]
-// long sdel,nsdel;
-// char msg[12];
+ ssize_t a;
+ a=write(pfd_to[1],&lcnt,sizeof(lcnt));
+ a=read(pfd_from[0],&info,sizeof(info));
 
- char s[150];
- memset(s,0,150);
-// pipe(pfd);
- pid=fork();
- if(pid==0)
-  {
-     pid=getpid();
-     // sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' | tee -a tmp\n"
-     //           "ps --no-headers -o psr -p %i | tee -a tmp",getpid());
-     sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' >> tmp\n"
-               "ps --no-headers -o psr -p %i >> tmp",getpid());
-     //  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t1);
-     //... какая-нибудь нагрузка
-     for(unsigned i=0;i<lcnt;++i)
-      {
-      //  printf("%i\n",i);
-       system(s);
-      }
-      //  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&t2);
-      //  sdel=t2.tv_sec-t1.tv_sec;
-      //  if(t2.tv_nsec-t1.tv_nsec<0)
-      //   nsdel=1000000000+t2.tv_nsec-t1.tv_nsec;
-      //  else
-      //   nsdel=t2.tv_nsec-t1.tv_nsec;
-
-      //  close(1);
-      //  dup(4);
-      //  printf("%1li.%.9li",sdel,nsdel);
-  exit(1);
-  }
-// close(4);
-
- wait3(stat,0,&info);
-// read(3,msg,11);
-// msg[11]=0;
-// close(3);
  unsigned freq_cpu[4],cpu_core;
  FILE *ftmp;
 
@@ -168,8 +171,9 @@ double get_rand(const unsigned lcnt, unsigned *freq)
   fscanf(ftmp,"%i|%i|%i|%i|  %i",&freq_cpu[0],&freq_cpu[1],&freq_cpu[2],&freq_cpu[3],&cpu_core);
   *freq+=freq_cpu[cpu_core];
   }
+ close(3);
  system("> tmp");
- close(4);
+// close(4);
  return info.ru_stime.tv_sec+info.ru_utime.tv_sec+(info.ru_stime.tv_usec+info.ru_utime.tv_usec)*0.000001;
  }
 
@@ -250,6 +254,7 @@ void distribution_init_test(double *meanX, double *meanS, double *varS, const un
    }
   tmp+=S[i];
   printf("\r%i/%i",i,m);
+  fflush(stdout);
   }
 
  _meanX=tmp/cnt;
