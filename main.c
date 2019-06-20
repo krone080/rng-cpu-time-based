@@ -25,6 +25,8 @@ void distribution_init(double *meanX, double *meanS, double *varS, const unsigne
 void distribution_init_test(double *meanX, double *meanS, double *varS, const unsigned cnt,
                       const unsigned lcnt, const unsigned n, char *fname);
 
+void middleman_generating();
+
 void freq_splitting_mode();
 
 double normal_cdf(double x, double E, double D)
@@ -36,42 +38,7 @@ pid_t pfd_to[2],pfd_from[2];
 
 int main(int argc,char* argv[])
  {
-
- pipe(pfd_to);
- pipe(pfd_from);
-
-//Процесс <Посредник>
- if(fork()==0)
-  {
-  close(pfd_to[1]);
-  close(pfd_from[0]);
-
-  unsigned lcnt;
-  while((read(pfd_to[0],&lcnt,sizeof(lcnt))>0)&&!(lcnt==0))
-   {
-   void* stat=NULL;
-   struct rusage info;
-   char s[150];
-   memset(s,0,150);
-
-//Генерируемый процесс <Задание>
-   if(fork()==0)
-    {
-    sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' >> tmp\n"
-              "ps --no-headers -o psr -p %i >> tmp",getpid());
-    for(unsigned i=0;i<lcnt;++i)
-     {
-     system(s);
-     }
-    exit(1);
-    }
-   wait3(stat,0,&info);
-   write(pfd_from[1],&info,sizeof(info));
-   }
-  exit(1);
-  }
- close(pfd_to[0]);
- close(pfd_from[1]);
+ middleman_generating();
 
  char fname[20];
  unsigned cnt,n,cnt2,lcnt;
@@ -246,6 +213,45 @@ void distribution_init_test(double *meanX, double *meanS, double *varS, const un
  *meanX=_meanX;
  *meanS=_meanS;
  *varS=_varS;
+ }
+
+void middleman_generating()
+ {
+ pipe(pfd_to);
+ pipe(pfd_from);
+
+//Процесс <Посредник>
+ if(fork()==0)
+  {
+  close(pfd_to[1]);
+  close(pfd_from[0]);
+
+  unsigned lcnt;
+  while((read(pfd_to[0],&lcnt,sizeof(lcnt))>0)&&!(lcnt==0))
+   {
+   void* stat=NULL;
+   struct rusage info;
+   char s[150];
+   memset(s,0,150);
+
+//Генерируемый процесс <Задание>
+   if(fork()==0)
+    {
+    sprintf(s,"cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq | tr  '\n' '|' >> tmp\n"
+              "ps --no-headers -o psr -p %i >> tmp",getpid());
+    for(unsigned i=0;i<lcnt;++i)
+     {
+     system(s);
+     }
+    exit(1);
+    }
+   wait3(stat,0,&info);
+   write(pfd_from[1],&info,sizeof(info));
+   }
+  exit(1);
+  }
+ close(pfd_to[0]);
+ close(pfd_from[1]);
  }
 
 void get_bit_sequence(double num, char* seq, unsigned split_len)
