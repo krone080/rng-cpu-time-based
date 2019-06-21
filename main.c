@@ -27,6 +27,7 @@ void distribution_init_test(double *meanX, double *meanS, double *varS, const un
 
 void middleman_generating();
 
+//не доделана
 void freq_splitting_mode();
 
 double normal_cdf(double x, double E, double D)
@@ -40,8 +41,8 @@ int main(int argc,char* argv[])
  {
  middleman_generating();
 
- char fname[20];
- unsigned cnt,n,cnt2,lcnt;
+ char fname[20],choice;
+ unsigned cnt,n,lcnt,left_bound=0,right_bound=0,split_num=1;
  FILE *ffile;
 
  if(argc==6)
@@ -50,10 +51,11 @@ int main(int argc,char* argv[])
   cnt=atoi(argv[2]);
   n=atoi(argv[3]);
   lcnt=atoi(argv[4]);
-  cnt2=atoi(argv[5]);
   }
  else
   {
+  printf("Mode (Usual or Freq_splitting) (U/F): ");
+  scanf("%c",&choice);
   printf("Input file name: ");
   scanf("%s",fname);
   printf("Sample length for init: ");
@@ -62,14 +64,32 @@ int main(int argc,char* argv[])
   scanf("%i",&n);
   printf("Load counter: ");
   scanf("%i",&lcnt);
-  printf("Gen sample length: ");
 
-  scanf("%i",&cnt2);
+  if(choice=='F')
+   {
+   printf("\nLeft bound: ");
+   scanf("%i",&left_bound);
+   printf("Right bound: ");
+   scanf("%i",&right_bound);
+   printf("Spliting num: ");
+   scanf("%i",&split_num);
+   }
   }
 
  double varS;
  double meanX,meanS;
- distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n,fname);
+ switch(choice)
+  {
+  case 'U':
+   distribution_init_test(&meanX,&meanS,&varS,cnt,lcnt,n,fname);
+   break;
+  case 'F':
+   freq_splitting_mode();
+   break;
+  default:
+   break;
+  }
+
 
  return 0;
  }
@@ -252,6 +272,74 @@ void middleman_generating()
   }
  close(pfd_to[0]);
  close(pfd_from[1]);
+ }
+
+void freq_splitting_mode(const unsigned cnt,const unsigned lcnt, const unsigned n, char *fname,
+                         const unsigned left_bound,const unsigned right_bound, const unsigned split_num)
+ {
+ double _meanX[split_num],_meanS[split_num],_varS[split_num];
+ const unsigned m=cnt/n;
+ double S[split_num],X[cnt],rnd;
+ unsigned Xfill[split_num],Sfill[split_num],freq;
+ system("> tmp");
+
+ for(unsigned i=0;i<split_num;++i)
+  {
+  S[i]=0;
+  Xfill[i]=0;
+  _meanX[i]=0;
+  _meanS[i]=0;
+  _varS[i]=0;
+  }
+
+ //начальное заполнение
+ unsigned i;
+ while(1)
+  {
+  rnd=get_rand(lcnt,&freq);
+  i=split_num-1;
+ //позже можно сделать дерево бинарного поиска
+  for(i;i>=0;++i)
+   {
+   if((freq>=left_bound+i*(left_bound+right_bound)/split_num)&&
+      (freq<left_bound+(i+1)*(left_bound+right_bound)/split_num))
+    {
+    _meanX[i]+=rnd;
+    ++Xfill[split_num];
+    break;
+    }
+   }
+  if(Xfill[i]==n)
+   break;
+  }
+ _meanX[i]/=n;
+
+ while(1)
+  {
+  rnd=get_rand(lcnt,&freq);
+  i=split_num-1;
+//позже можно сделать дерево бинарного поиска
+  for(i;i>=0;++i)
+   {
+   if((freq>=left_bound+i*(left_bound+right_bound)/split_num)&&
+      (freq<left_bound+(i+1)*(left_bound+right_bound)/split_num))
+    {
+//  n можно будет потом заменить
+    if(Xfill[i]<n)
+     {
+     _meanX[i]+=rnd;
+     ++Xfill[i];
+     break;
+     }
+    if(Sfill[i]<n)
+     {
+     S[i]+=rnd;
+     ++Xfill[i];
+     break;
+      }
+    }
+   }
+  }
  }
 
 void get_bit_sequence(double num, char* seq, unsigned split_len)
